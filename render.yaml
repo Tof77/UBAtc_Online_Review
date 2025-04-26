@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: relecture-word
+    env: python
+    buildCommand: ""
+    startCommand: python app.py
+    plan: free
