@@ -24,18 +24,18 @@ HTML_TEMPLATE = '''
   <h1>Document : {{ filename }}</h1>
   <p>Connecté en tant que : <strong>{{ user }}</strong></p>
   <hr>
-  {% for idx, para in enumerate(paragraphs) %}
+  {% for para in paragraphs %}
     <div style="margin-bottom: 20px;">
-      <p><strong>[{{ idx }}]</strong> {{ para }}</p>
+      <p><strong>[{{ loop.index0 }}]</strong> {{ para }}</p>
       <form method="post" action="/comment">
-        <input type="hidden" name="para_id" value="{{ idx }}">
+        <input type="hidden" name="para_id" value="{{ loop.index0 }}">
         <input type="hidden" name="user" value="{{ user }}">
         <textarea name="comment" placeholder="Votre commentaire" rows="2" cols="50"></textarea><br>
         <button type="submit">Commenter</button>
       </form>
-      {% if comments.get(idx) %}
+      {% if comments.get(loop.index0) %}
         <ul>
-        {% for c in comments[idx] %}
+        {% for c in comments[loop.index0] %}
           <li><strong>{{ c['user'] }}</strong> : {{ c['text'] }}</li>
         {% endfor %}
         </ul>
@@ -83,4 +83,6 @@ def comment():
     return redirect(url_for('review', user=user))
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=10000, debug=True)
+    import os
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host="0.0.0.0", port=port, debug=True)
