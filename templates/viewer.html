@@ -140,7 +140,8 @@ function drawMarkers() {
     marker.title = comment.text.substring(0, 30) + '...';
     marker.style.left = (comment.x * canvas.width) + 'px';
     marker.style.top = (comment.y * canvas.height) + 'px';
-    marker.onclick = function() {
+    marker.onclick = function(event) {
+      event.stopPropagation(); // bloque le clic qui ouvrirait la modale
       document.getElementById(`comment-${pageNum}-${index}`).scrollIntoView({ behavior: "smooth", block: "center" });
     };
     container.appendChild(marker);
