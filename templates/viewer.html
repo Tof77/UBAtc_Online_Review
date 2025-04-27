@@ -106,6 +106,13 @@
       height: 100%;
       pointer-events: none;
     }
+    .resolved {
+      background-color: #e0e0e0;
+      color: #555;
+    }
+    .comment-text.resolved-text {
+      text-decoration: line-through;
+    }
   </style>
   <script src="/static/pdfjs/pdf.min.js"></script>
 </head>
@@ -271,6 +278,9 @@ function showCommentsForPage(page) {
     const block = document.createElement('div');
     block.className = 'comment-block';
     block.id = `comment-${page}-${index}`;
+    if (comment.status === 'resolved') {
+      block.classList.add('resolved');
+    }
     block.innerHTML = `
       <div class="author-info">
         <div class="initials-circle">${comment.initials}</div>
@@ -313,17 +323,75 @@ function drawMarkers() {
 }
 
 function editComment(page, index) {
+  const block = document.getElementById(`comment-${page}-${index}`);
   const comment = commentsPerPage[page][index];
-  const newText = prompt("Modifier le commentaire :", comment.text);
-  if (newText !== null) {
-    comment.text = newText;
+
+  if (block.querySelector('textarea')) {
+    // Déjà en édition => ne rien faire
+    return;
+  }
+
+  // Désactiver tous les autres boutons pendant édition
+  document.querySelectorAll('.comment-actions button').forEach(b => b.disabled = true);
+
+  const originalText = comment.text;
+
+  // Remplacer le texte par un textarea
+  const textDiv = block.querySelector('.comment-text');
+  const textarea = document.createElement('textarea');
+  textarea.value = originalText;
+  textarea.rows = 3;
+  textarea.cols = 40;
+
+  // Créer boutons Sauver et Annuler
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = '✅';
+  saveBtn.onclick = function() {
+    const newText = textarea.value.trim();
+    if (!newText) {
+      alert("Le commentaire ne peut pas être vide.");
+      return;
+    }
+    // Mise à jour du texte dans le tableau
+    commentsPerPage[page][index].text = newText;
+
+    // Rafraîchir affichage + garder position
     showCommentsForPage(page);
     drawMarkers();
-  }
+
+    // Scroll + flash sur le commentaire édité
+    const updatedBlock = document.getElementById(`comment-${page}-${index}`);
+    updatedBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+    updatedBlock.classList.add('highlight');
+    setTimeout(() => updatedBlock.classList.remove('highlight'), 1500);
+  };
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = '❌';
+  cancelBtn.onclick = function() {
+    showCommentsForPage(page);
+    drawMarkers();
+  };
+
+  textDiv.innerHTML = ''; // Vide l'ancien texte
+  textDiv.appendChild(textarea);
+  textDiv.appendChild(document.createElement('br'));
+  textDiv.appendChild(saveBtn);
+  textDiv.appendChild(cancelBtn);
 }
 
 function resolveComment(page, index) {
-  alert('Fonction Résoudre à venir (peut changer le statut) ! 🚀');
+  const comment = commentsPerPage[page][index];
+  comment.status = 'resolved';
+
+  showCommentsForPage(page);
+  drawMarkers();
+
+  // Scroll + flash doux
+  const resolvedBlock = document.getElementById(`comment-${page}-${index}`);
+  resolvedBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+  resolvedBlock.classList.add('highlight');
+  setTimeout(() => resolvedBlock.classList.remove('highlight'), 1500);
 }
 
 function deleteComment(page, index) {
