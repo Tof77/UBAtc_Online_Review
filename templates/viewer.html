@@ -129,7 +129,7 @@
 </div>
 
 <!-- Modale pour ajouter un commentaire -->
-<div id="commentModal" class="modal">
+<!-- <div id="commentModal" class="modal">
   <h3>Ajouter un commentaire</h3>
   <textarea id="commentText" placeholder="Votre commentaire" rows="4" cols="40"></textarea><br>
   <select id="commentType">
@@ -141,7 +141,7 @@
   </select><br>
   <button onclick="submitComment()">Envoyer</button>
   <button onclick="closeModal()">Annuler</button>
-</div>
+</div> -->
 
 <script>
 const url = "/uploads/{{ filename }}";
@@ -176,7 +176,8 @@ function handleClick(event) {
   const rect = canvas.getBoundingClientRect();
   clickX = (event.clientX - rect.left) / rect.width;
   clickY = (event.clientY - rect.top) / rect.height;
-  openModal();
+
+  showMiniPopup(event.clientX - rect.left, event.clientY - rect.top);
 }
 
 function openModal() {
@@ -189,6 +190,59 @@ function closeModal() {
   document.getElementById('commentModal').style.display = 'none';
 }
 
+function showMiniPopup(posX, posY) {
+  // Supprimer un popup existant s'il y en a un
+  const oldPopup = document.getElementById('miniPopup');
+  if (oldPopup) oldPopup.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'miniPopup';
+  popup.style.position = 'absolute';
+  popup.style.top = `${posY}px`;
+  popup.style.left = `${posX}px`;
+  popup.style.background = 'white';
+  popup.style.border = '2px solid purple';
+  popup.style.borderRadius = '8px';
+  popup.style.padding = '10px';
+  popup.style.zIndex = 10;
+  popup.style.boxShadow = '2px 2px 6px rgba(0,0,0,0.3)';
+  popup.innerHTML = `
+    <textarea id="popupComment" rows="3" cols="30" placeholder="Votre commentaire"></textarea><br>
+    <button onclick="submitMiniPopup()">Envoyer</button>
+    <button onclick="cancelMiniPopup()">Annuler</button>
+  `;
+  
+  document.getElementById('viewerContainer').appendChild(popup);
+}
+
+function cancelMiniPopup() {
+  const popup = document.getElementById('miniPopup');
+  if (popup) popup.remove();
+}
+
+function submitMiniPopup() {
+  const text = document.getElementById('popupComment').value.trim();
+  if (!text) {
+    alert("Veuillez écrire un commentaire.");
+    return;
+  }
+  const author = 'Christophe China'; // à dynamiser plus tard
+  const initials = getInitials(author);
+  const now = new Date().toLocaleString();
+
+  fetch("/add_comment", {
+    method: "POST",
+    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+    body: `page=${pageNum}&x=${clickX}&y=${clickY}&text=${encodeURIComponent(text)}&type=suggestion`
+  }).then(() => {
+    if (!commentsPerPage[pageNum]) commentsPerPage[pageNum] = [];
+    commentsPerPage[pageNum].push({ text: text, type: 'suggestion', x: clickX, y: clickY, author: author, initials: initials, createdAt: now, replies: [], status: 'open' });
+    showCommentsForPage(pageNum);
+    drawMarkers();
+    cancelMiniPopup();
+  });
+}
+  
 function submitComment() {
   const text = document.getElementById('commentText').value;
   const type = document.getElementById('commentType').value;
