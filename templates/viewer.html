@@ -128,7 +128,7 @@ function showCommentsForPage(page) {
     const commentDiv = document.createElement('div');
     commentDiv.id = `comment-${page}-${index}`;
     commentDiv.className = 'comment ' + comment.type;
-    commentDiv.innerHTML = `<strong>[${comment.type}]</strong> ${comment.text} <button onclick="replyTo(this)">Répondre</button><div class="replies"></div>`;
+    commentDiv.innerHTML = `<strong>[${comment.type}]</strong> ${comment.text} <button onclick="replyTo(this)">Répondre</button><button onclick="editComment(this)">Modifier</button><div class="replies"></div>`;
     comment.replies.forEach(reply => {
       const replyDiv = document.createElement('div');
       replyDiv.className = 'reply';
@@ -210,6 +210,49 @@ function submitComment() {
     drawMarkers();
     closeModal();
   });
+}
+
+function editComment(button) {
+  const commentDiv = button.parentElement;
+  const originalText = commentDiv.querySelector('strong').nextSibling.nodeValue.trim();
+  const originalType = commentDiv.classList.contains('suggestion') ? 'suggestion'
+                        : commentDiv.classList.contains('question') ? 'question'
+                        : commentDiv.classList.contains('error') ? 'error'
+                        : commentDiv.classList.contains('info') ? 'info'
+                        : 'other';
+
+  // Désactiver tous les boutons pendant édition
+  document.querySelectorAll('button').forEach(b => b.disabled = true);
+
+  const textarea = document.createElement('textarea');
+  textarea.value = originalText;
+  textarea.rows = 3;
+  textarea.cols = 40;
+
+  const saveBtn = document.createElement('button');
+  saveBtn.textContent = 'Enregistrer';
+  saveBtn.onclick = function() {
+    const newText = textarea.value.trim();
+    if (!newText) return;
+    // Mettre à jour l'affichage
+    commentDiv.innerHTML = `<strong>[${originalType}]</strong> ${newText} <button onclick="replyTo(this)">Répondre</button> <button onclick="editComment(this)">Modifier</button><div class="replies"></div>`;
+    drawMarkers(); // redraw pastilles si nécessaire
+    document.querySelectorAll('button').forEach(b => b.disabled = false);
+  };
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.textContent = 'Annuler';
+  cancelBtn.onclick = function() {
+    // Recharger l'affichage sans changer
+    commentDiv.innerHTML = `<strong>[${originalType}]</strong> ${originalText} <button onclick="replyTo(this)">Répondre</button> <button onclick="editComment(this)">Modifier</button><div class="replies"></div>`;
+    document.querySelectorAll('button').forEach(b => b.disabled = false);
+  };
+
+  commentDiv.innerHTML = '';
+  commentDiv.appendChild(textarea);
+  commentDiv.appendChild(document.createElement('br'));
+  commentDiv.appendChild(saveBtn);
+  commentDiv.appendChild(cancelBtn);
 }
 
 function replyTo(button) {
