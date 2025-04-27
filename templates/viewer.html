@@ -113,6 +113,20 @@
     .comment-text.resolved-text {
       text-decoration: line-through;
     }
+    .resolved-banner {
+      background-color: #e0e0e0;
+      color: #333;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-bottom: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+    }
+    .resolved-banner::before {
+      content: "✅";
+      margin-right: 6px;
+    }
   </style>
   <script src="/static/pdfjs/pdf.min.js"></script>
 </head>
@@ -280,6 +294,12 @@ function showCommentsForPage(page) {
     block.id = `comment-${page}-${index}`;
     if (comment.status === 'resolved') {
       block.classList.add('resolved');
+    }
+    if (comment.status === 'resolved') {
+      const resolvedBanner = document.createElement('div');
+      resolvedBanner.className = 'resolved-banner';
+      resolvedBanner.innerText = 'Resolved';
+      block.appendChild(resolvedBanner);
     }
     block.innerHTML = `
       <div class="author-info">
