@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Relecture PDF - Multi Pages</title>
+  <title>Relecture PDF - Multi Pages + Pastilles</title>
   <style>
     body { display: flex; margin: 0; height: 100vh; }
-    #viewerContainer { flex: 3; overflow: auto; position: relative; background: #f0f0f0; }
+    #viewerContainer { flex: 3; overflow: auto; position: relative; background: #f0f0f0; position: relative; }
     #commentsPanel { flex: 1; border-left: 2px solid #ccc; padding: 10px; overflow-y: auto; background: #fafafa; }
     #commentsPanel h2 { font-size: 18px; margin-top: 0; }
-    .comment { margin-bottom: 10px; background: #fff; padding: 5px; border-radius: 5px; }
+    .comment { margin-bottom: 10px; background: #fff; padding: 5px; border-radius: 5px; position: relative; }
     .suggestion { border-left: 5px solid #42a5f5; }
     .question { border-left: 5px solid #1e88e5; }
     .error { border-left: 5px solid #e53935; }
     .info { border-left: 5px solid #43a047; }
     .other { border-left: 5px solid #9e9e9e; }
-    .reply { margin-left: 20px; font-size: 90%; background: #eef; border-radius: 3px; padding: 3px; }
+    .reply { margin-left: 20px; font-size: 90%; background: #eef; border-radius: 3px; padding: 3px; margin-top: 3px; }
     canvas { border: 1px solid #ccc; margin-bottom: 10px; }
     .controls { text-align: center; margin: 10px; }
     .modal {
@@ -22,6 +22,21 @@
       background: white; border: 2px solid #000; padding: 20px; z-index: 10;
     }
     .modal input, .modal select { margin: 5px 0; }
+    .marker {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      background: orange;
+      border-radius: 50%;
+      color: white;
+      font-weight: bold;
+      text-align: center;
+      line-height: 24px;
+      cursor: pointer;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      font-size: 14px;
+    }
   </style>
   <script src="/static/pdfjs/pdf.min.js"></script>
 </head>
@@ -32,7 +47,10 @@
       <span>Page: <span id="page_num">1</span> / <span id="page_count">?</span></span>
       <button onclick="nextPage()">Suivant ➡️</button>
     </div>
-    <canvas id="pdf-canvas" onclick="handleClick(event)"></canvas>
+    <div style="position: relative;">
+      <canvas id="pdf-canvas" onclick="handleClick(event)"></canvas>
+      <div id="markersContainer" style="position: absolute; top: 0; left: 0; pointer-events: none;"></div>
+    </div>
   </div>
 
   <div id="commentsPanel">
@@ -63,7 +81,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdfjs/pdf.worker.min.js';
 let pdfDoc = null, pageNum = 1, pageCount = 0, scale = 1.5;
 let canvas = document.getElementById('pdf-canvas'), ctx = canvas.getContext('2d');
 let clickX = 0, clickY = 0;
-let commentsPerPage = {}; // Simuler un petit stockage temporaire
+let commentsPerPage = {};  // {pageNum: [{text, type, x, y, replies:[]}]}
 
 function renderPage(num) {
   pdfDoc.getPage(num).then(function(page) {
@@ -76,9 +94,10 @@ function renderPage(num) {
       viewport: viewport
     };
     page.render(renderContext);
-    
+
     document.getElementById('page_num').textContent = pageNum;
     showCommentsForPage(num);
+    drawMarkers();
   });
 }
 
@@ -86,11 +105,36 @@ function showCommentsForPage(page) {
   const list = document.getElementById('commentsList');
   list.innerHTML = '';
   const comments = commentsPerPage[page] || [];
-  comments.forEach(comment => {
+  comments.forEach((comment, index) => {
     const commentDiv = document.createElement('div');
+    commentDiv.id = `comment-${page}-${index}`;
     commentDiv.className = 'comment ' + comment.type;
-    commentDiv.innerHTML = `[${comment.type}] ${comment.text} <button onclick="replyTo(this)">Répondre</button><div class="replies"></div>`;
+    commentDiv.innerHTML = `<strong>[${comment.type}]</strong> ${comment.text} <button onclick="replyTo(this)">Répondre</button><div class="replies"></div>`;
+    comment.replies.forEach(reply => {
+      const replyDiv = document.createElement('div');
+      replyDiv.className = 'reply';
+      replyDiv.innerText = reply;
+      commentDiv.querySelector('.replies').appendChild(replyDiv);
+    });
     list.appendChild(commentDiv);
+  });
+}
+
+function drawMarkers() {
+  const container = document.getElementById('markersContainer');
+  container.innerHTML = '';
+  const comments = commentsPerPage[pageNum] || [];
+  comments.forEach((comment, index) => {
+    const marker = document.createElement('div');
+    marker.className = 'marker';
+    marker.textContent = index + 1;
+    marker.title = comment.text.substring(0, 30) + '...';
+    marker.style.left = (comment.x * canvas.width) + 'px';
+    marker.style.top = (comment.y * canvas.height) + 'px';
+    marker.onclick = function() {
+      document.getElementById(`comment-${pageNum}-${index}`).scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+    container.appendChild(marker);
   });
 }
 
@@ -125,15 +169,16 @@ function closeModal() {
 function submitComment() {
   const text = document.getElementById('commentText').value;
   const type = document.getElementById('commentType').value;
-  
+
   fetch("/add_comment", {
     method: "POST",
     headers: {"Content-Type": "application/x-www-form-urlencoded"},
     body: `page=${pageNum}&x=${clickX}&y=${clickY}&text=${encodeURIComponent(text)}&type=${type}`
   }).then(() => {
     if (!commentsPerPage[pageNum]) commentsPerPage[pageNum] = [];
-    commentsPerPage[pageNum].push({ text: text, type: type, replies: [] });
+    commentsPerPage[pageNum].push({ text: text, type: type, x: clickX, y: clickY, replies: [] });
     showCommentsForPage(pageNum);
+    drawMarkers();
     closeModal();
   });
 }
