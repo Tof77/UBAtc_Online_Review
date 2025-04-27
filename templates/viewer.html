@@ -45,7 +45,17 @@
       z-index: 5;
       font-size: 14px;
       pointer-events: auto; /* important : permet de cliquer/hover sur la pastille */
-    }    
+    }
+    .highlight {
+      animation: flash 1s ease-in-out;
+      background-color: yellow;
+    }
+    
+    @keyframes flash {
+      0% { background-color: yellow; }
+      100% { background-color: transparent; }
+    }
+    
   </style>
   <script src="/static/pdfjs/pdf.min.js"></script>
 </head>
@@ -141,8 +151,14 @@ function drawMarkers() {
     marker.style.left = (comment.x * canvas.width) + 'px';
     marker.style.top = (comment.y * canvas.height) + 'px';
     marker.onclick = function(event) {
-      event.stopPropagation(); // bloque le clic qui ouvrirait la modale
-      document.getElementById(`comment-${pageNum}-${index}`).scrollIntoView({ behavior: "smooth", block: "center" });
+      event.stopPropagation();
+      const commentElement = document.getElementById(`comment-${pageNum}-${index}`);
+      commentElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      
+      commentElement.classList.add('highlight');
+      setTimeout(() => {
+        commentElement.classList.remove('highlight');
+      }, 1500); // 1,5 seconde après, on retire le flash
     };
     container.appendChild(marker);
   });
