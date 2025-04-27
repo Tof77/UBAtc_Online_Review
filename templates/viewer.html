@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Relecture PDF</title>
+  <title>Relecture PDF - Multi Pages</title>
   <style>
     body { display: flex; margin: 0; height: 100vh; }
     #viewerContainer { flex: 3; overflow: auto; position: relative; background: #f0f0f0; }
     #commentsPanel { flex: 1; border-left: 2px solid #ccc; padding: 10px; overflow-y: auto; background: #fafafa; }
     #commentsPanel h2 { font-size: 18px; margin-top: 0; }
-    .comment { margin-bottom: 10px; background: #fff; padding: 5px; border-radius: 5px; position: relative; }
+    .comment { margin-bottom: 10px; background: #fff; padding: 5px; border-radius: 5px; }
     .suggestion { border-left: 5px solid #42a5f5; }
     .question { border-left: 5px solid #1e88e5; }
     .error { border-left: 5px solid #e53935; }
     .info { border-left: 5px solid #43a047; }
     .other { border-left: 5px solid #9e9e9e; }
-    canvas { border: 1px solid #ccc; margin-bottom: 10px; }
     .reply { margin-left: 20px; font-size: 90%; background: #eef; border-radius: 3px; padding: 3px; }
+    canvas { border: 1px solid #ccc; margin-bottom: 10px; }
+    .controls { text-align: center; margin: 10px; }
     .modal {
       display: none; position: fixed; top: 30%; left: 50%;
       transform: translate(-50%, -30%);
@@ -25,9 +26,15 @@
   <script src="/static/pdfjs/pdf.min.js"></script>
 </head>
 <body>
-  <div id="viewerContainer" onclick="handleClick(event)">
-    <canvas id="pdf-canvas"></canvas>
+  <div id="viewerContainer">
+    <div class="controls">
+      <button onclick="prevPage()">⬅️ Précédent</button>
+      <span>Page: <span id="page_num">1</span> / <span id="page_count">?</span></span>
+      <button onclick="nextPage()">Suivant ➡️</button>
+    </div>
+    <canvas id="pdf-canvas" onclick="handleClick(event)"></canvas>
   </div>
+
   <div id="commentsPanel">
     <h2>Commentaires</h2>
     <div id="commentsList"></div>
@@ -53,9 +60,10 @@ const url = "/uploads/{{ filename }}";
 const pdfjsLib = window['pdfjs-dist/build/pdf'];
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdfjs/pdf.worker.min.js';
 
-let pdfDoc = null, pageNum = 1, scale = 1.5;
+let pdfDoc = null, pageNum = 1, pageCount = 0, scale = 1.5;
 let canvas = document.getElementById('pdf-canvas'), ctx = canvas.getContext('2d');
 let clickX = 0, clickY = 0;
+let commentsPerPage = {}; // Simuler un petit stockage temporaire
 
 function renderPage(num) {
   pdfDoc.getPage(num).then(function(page) {
@@ -68,13 +76,35 @@ function renderPage(num) {
       viewport: viewport
     };
     page.render(renderContext);
+    
+    document.getElementById('page_num').textContent = pageNum;
+    showCommentsForPage(num);
   });
 }
 
-pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
-  pdfDoc = pdfDoc_;
+function showCommentsForPage(page) {
+  const list = document.getElementById('commentsList');
+  list.innerHTML = '';
+  const comments = commentsPerPage[page] || [];
+  comments.forEach(comment => {
+    const commentDiv = document.createElement('div');
+    commentDiv.className = 'comment ' + comment.type;
+    commentDiv.innerHTML = `[${comment.type}] ${comment.text} <button onclick="replyTo(this)">Répondre</button><div class="replies"></div>`;
+    list.appendChild(commentDiv);
+  });
+}
+
+function nextPage() {
+  if (pageNum >= pageCount) return;
+  pageNum++;
   renderPage(pageNum);
-});
+}
+
+function prevPage() {
+  if (pageNum <= 1) return;
+  pageNum--;
+  renderPage(pageNum);
+}
 
 function handleClick(event) {
   const rect = canvas.getBoundingClientRect();
@@ -101,11 +131,9 @@ function submitComment() {
     headers: {"Content-Type": "application/x-www-form-urlencoded"},
     body: `page=${pageNum}&x=${clickX}&y=${clickY}&text=${encodeURIComponent(text)}&type=${type}`
   }).then(() => {
-    const commentList = document.getElementById('commentsList');
-    const commentDiv = document.createElement('div');
-    commentDiv.className = 'comment ' + type;
-    commentDiv.innerHTML = `[${type}] ${text} <button onclick="replyTo(this)">Répondre</button><div class="replies"></div>`;
-    commentList.appendChild(commentDiv);
+    if (!commentsPerPage[pageNum]) commentsPerPage[pageNum] = [];
+    commentsPerPage[pageNum].push({ text: text, type: type, replies: [] });
+    showCommentsForPage(pageNum);
     closeModal();
   });
 }
@@ -118,6 +146,13 @@ function replyTo(button) {
   replyDiv.innerText = replyText;
   button.parentElement.querySelector('.replies').appendChild(replyDiv);
 }
+
+pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
+  pdfDoc = pdfDoc_;
+  pageCount = pdfDoc.numPages;
+  document.getElementById('page_count').textContent = pageCount;
+  renderPage(pageNum);
+});
 </script>
 </body>
 </html>
