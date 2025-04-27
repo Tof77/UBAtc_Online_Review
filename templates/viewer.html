@@ -1,35 +1,87 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Relecture PDF - Multi Pages + Pastilles</title>
+  <title>Relecture PDF - MS Word Style</title>
   <style>
-    body { display: flex; margin: 0; height: 100vh; }
-    #viewerContainer { flex: 3; overflow: auto; position: relative; background: #f0f0f0; position: relative; }
+    body { display: flex; margin: 0; height: 100vh; font-family: Arial, sans-serif; }
+    #viewerContainer { flex: 3; overflow: auto; position: relative; background: #f0f0f0; }
     #commentsPanel { flex: 1; border-left: 2px solid #ccc; padding: 10px; overflow-y: auto; background: #fafafa; }
-    #commentsPanel h2 { font-size: 18px; margin-top: 0; }
-    .comment { margin-bottom: 10px; background: #fff; padding: 5px; border-radius: 5px; position: relative; }
-    .suggestion { border-left: 5px solid #42a5f5; }
-    .question { border-left: 5px solid #1e88e5; }
-    .error { border-left: 5px solid #e53935; }
-    .info { border-left: 5px solid #43a047; }
-    .other { border-left: 5px solid #9e9e9e; }
-    .reply { margin-left: 20px; font-size: 90%; background: #eef; border-radius: 3px; padding: 3px; margin-top: 3px; }
-    canvas { border: 1px solid #ccc; margin-bottom: 10px; }
     .controls { text-align: center; margin: 10px; }
-    .modal {
-      display: none; position: fixed; top: 30%; left: 50%;
-      transform: translate(-50%, -30%);
-      background: white; border: 2px solid #000; padding: 20px; z-index: 10;
+    canvas { border: 1px solid #ccc; margin-bottom: 10px; }
+
+    /* Comment block */
+    .comment-block {
+      border: 2px solid purple;
+      border-radius: 8px;
+      padding: 10px;
+      margin-bottom: 15px;
+      background: white;
+      position: relative;
+      transition: background-color 0.5s;
     }
-    .modal input, .modal select { margin: 5px 0; }
-    #markersContainer {
+    .author-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .initials-circle {
+      background-color: #6a1b9a;
+      color: white;
+      font-weight: bold;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+      font-size: 14px;
+    }
+    .author-name {
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .comment-text {
+      margin: 8px 0;
+      font-size: 14px;
+    }
+    .comment-date {
+      font-size: 12px;
+      color: gray;
+      margin-bottom: 5px;
+    }
+    .comment-actions {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none; /* important : bloque événements sauf pour pastilles */
-    }    
+      top: 8px;
+      right: 8px;
+    }
+    .comment-actions button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      margin-left: 5px;
+    }
+    .reply-input {
+      margin-top: 10px;
+    }
+    .reply-input input {
+      width: 90%;
+      padding: 5px;
+      margin-top: 5px;
+    }
+    .highlight {
+      animation: flash 1s ease-in-out;
+      background-color: yellow;
+    }
+    @keyframes flash {
+      0% { background-color: yellow; }
+      100% { background-color: transparent; }
+    }
+    .fade-out {
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
     .marker {
       position: absolute;
       width: 24px;
@@ -44,38 +96,37 @@
       transform: translate(-50%, -50%);
       z-index: 5;
       font-size: 14px;
-      pointer-events: auto; /* important : permet de cliquer/hover sur la pastille */
+      pointer-events: auto;
     }
-    .highlight {
-      animation: flash 1s ease-in-out;
-      background-color: yellow;
+    #markersContainer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
     }
-    
-    @keyframes flash {
-      0% { background-color: yellow; }
-      100% { background-color: transparent; }
-    }
-    
   </style>
   <script src="/static/pdfjs/pdf.min.js"></script>
 </head>
 <body>
-  <div id="viewerContainer">
-    <div class="controls">
-      <button onclick="prevPage()">⬅️ Précédent</button>
-      <span>Page: <span id="page_num">1</span> / <span id="page_count">?</span></span>
-      <button onclick="nextPage()">Suivant ➡️</button>
-    </div>
-    <div style="position: relative;">
-      <canvas id="pdf-canvas" onclick="handleClick(event)"></canvas>
-      <div id="markersContainer" style="position: absolute; top: 0; left: 0; pointer-events: none;"></div>
-    </div>
-  </div>
 
-  <div id="commentsPanel">
-    <h2>Commentaires</h2>
-    <div id="commentsList"></div>
+<div id="viewerContainer">
+  <div class="controls">
+    <button onclick="prevPage()">⬅️ Précédent</button>
+    <span>Page: <span id="page_num">1</span> / <span id="page_count">?</span></span>
+    <button onclick="nextPage()">Suivant ➡️</button>
   </div>
+  <div style="position: relative;">
+    <canvas id="pdf-canvas" onclick="handleClick(event)"></canvas>
+    <div id="markersContainer"></div>
+  </div>
+</div>
+
+<div id="commentsPanel">
+  <h2>Commentaires</h2>
+  <div id="commentsList"></div>
+</div>
 
 <!-- Modale pour ajouter un commentaire -->
 <div id="commentModal" class="modal">
@@ -100,23 +151,61 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdfjs/pdf.worker.min.js';
 let pdfDoc = null, pageNum = 1, pageCount = 0, scale = 1.5;
 let canvas = document.getElementById('pdf-canvas'), ctx = canvas.getContext('2d');
 let clickX = 0, clickY = 0;
-let commentsPerPage = {};  // {pageNum: [{text, type, x, y, replies:[]}]}
+let commentsPerPage = {};  // {pageNum: [{author, text, type, x, y, replies:[], createdAt, status}]}
 
 function renderPage(num) {
   pdfDoc.getPage(num).then(function(page) {
     let viewport = page.getViewport({ scale: scale });
     canvas.height = viewport.height;
     canvas.width = viewport.width;
-
     let renderContext = {
       canvasContext: ctx,
       viewport: viewport
     };
     page.render(renderContext);
-
     document.getElementById('page_num').textContent = pageNum;
     showCommentsForPage(num);
     drawMarkers();
+  });
+}
+
+function nextPage() { if (pageNum < pageCount) { pageNum++; renderPage(pageNum); } }
+function prevPage() { if (pageNum > 1) { pageNum--; renderPage(pageNum); } }
+
+function handleClick(event) {
+  const rect = canvas.getBoundingClientRect();
+  clickX = (event.clientX - rect.left) / rect.width;
+  clickY = (event.clientY - rect.top) / rect.height;
+  openModal();
+}
+
+function openModal() {
+  document.getElementById('commentText').value = '';
+  document.getElementById('commentType').selectedIndex = 0;
+  document.getElementById('commentModal').style.display = 'block';
+}
+
+function closeModal() {
+  document.getElementById('commentModal').style.display = 'none';
+}
+
+function submitComment() {
+  const text = document.getElementById('commentText').value;
+  const type = document.getElementById('commentType').value;
+  const author = 'Christophe China'; // à remplacer plus tard par l'identité utilisateur
+  const initials = getInitials(author);
+  const now = new Date().toLocaleString();
+
+  fetch("/add_comment", {
+    method: "POST",
+    headers: {"Content-Type": "application/x-www-form-urlencoded"},
+    body: `page=${pageNum}&x=${clickX}&y=${clickY}&text=${encodeURIComponent(text)}&type=${type}`
+  }).then(() => {
+    if (!commentsPerPage[pageNum]) commentsPerPage[pageNum] = [];
+    commentsPerPage[pageNum].push({ text: text, type: type, x: clickX, y: clickY, author: author, initials: initials, createdAt: now, replies: [], status: 'open' });
+    showCommentsForPage(pageNum);
+    drawMarkers();
+    closeModal();
   });
 }
 
@@ -125,17 +214,23 @@ function showCommentsForPage(page) {
   list.innerHTML = '';
   const comments = commentsPerPage[page] || [];
   comments.forEach((comment, index) => {
-    const commentDiv = document.createElement('div');
-    commentDiv.id = `comment-${page}-${index}`;
-    commentDiv.className = 'comment ' + comment.type;
-    commentDiv.innerHTML = `<strong>[${comment.type}]</strong> ${comment.text} <button onclick="editComment(this)">Modifier</button><button onclick="deleteComment(this)">Supprimer</button> ${(comment.author !== 'anonymous') ? '' : '<button onclick="replyTo(this)">Répondre</button>'} <div class="replies"></div>`;
-    comment.replies.forEach(reply => {
-      const replyDiv = document.createElement('div');
-      replyDiv.className = 'reply';
-      replyDiv.innerText = reply;
-      commentDiv.querySelector('.replies').appendChild(replyDiv);
-    });
-    list.appendChild(commentDiv);
+    const block = document.createElement('div');
+    block.className = 'comment-block';
+    block.id = `comment-${page}-${index}`;
+    block.innerHTML = `
+      <div class="author-info">
+        <div class="initials-circle">${comment.initials}</div>
+        <div class="author-name">${comment.author}</div>
+      </div>
+      <div class="comment-actions">
+        <button onclick="editComment(${page}, ${index})">✏️</button>
+        <button onclick="resolveComment(${page}, ${index})">✅</button>
+        <button onclick="deleteComment(${page}, ${index})">🗑️</button>
+      </div>
+      <div class="comment-text">${comment.text}</div>
+      <div class="comment-date">${comment.createdAt}</div>
+    `;
+    list.appendChild(block);
   });
 }
 
@@ -154,122 +249,43 @@ function drawMarkers() {
       event.stopPropagation();
       const commentElement = document.getElementById(`comment-${pageNum}-${index}`);
       commentElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      
       commentElement.classList.add('highlight');
       setTimeout(() => {
         commentElement.classList.remove('highlight');
-      }, 1500); // 1,5 seconde après, on retire le flash
+      }, 1500);
     };
     container.appendChild(marker);
   });
 }
 
-function nextPage() {
-  if (pageNum >= pageCount) return;
-  pageNum++;
-  renderPage(pageNum);
-}
-
-function prevPage() {
-  if (pageNum <= 1) return;
-  pageNum--;
-  renderPage(pageNum);
-}
-
-function handleClick(event) {
-  const rect = canvas.getBoundingClientRect();
-  clickX = (event.clientX - rect.left) / rect.width;
-  clickY = (event.clientY - rect.top) / rect.height;
-  
-  openModal();
-}
-
-function openModal() {
-  document.getElementById('commentText').value = '';  // vide le texte
-  document.getElementById('commentType').selectedIndex = 0; // remet le premier choix
-  document.getElementById('commentModal').style.display = 'block';
-}
-
-
-function closeModal() {
-  document.getElementById('commentModal').style.display = 'none';
-}
-
-function submitComment() {
-  const text = document.getElementById('commentText').value;
-  const type = document.getElementById('commentType').value;
-
-  fetch("/add_comment", {
-    method: "POST",
-    headers: {"Content-Type": "application/x-www-form-urlencoded"},
-    body: `page=${pageNum}&x=${clickX}&y=${clickY}&text=${encodeURIComponent(text)}&type=${type}`
-  }).then(() => {
-    if (!commentsPerPage[pageNum]) commentsPerPage[pageNum] = [];
-    commentsPerPage[pageNum].push({ text: text, type: type, x: clickX, y: clickY, replies: [] });
-    showCommentsForPage(pageNum);
+function editComment(page, index) {
+  const comment = commentsPerPage[page][index];
+  const newText = prompt("Modifier le commentaire :", comment.text);
+  if (newText !== null) {
+    comment.text = newText;
+    showCommentsForPage(page);
     drawMarkers();
-    closeModal();
-  });
+  }
 }
 
-function editComment(button) {
-  const commentDiv = button.parentElement;
-  const originalText = commentDiv.querySelector('strong').nextSibling.nodeValue.trim();
-  const originalType = commentDiv.classList.contains('suggestion') ? 'suggestion'
-                        : commentDiv.classList.contains('question') ? 'question'
-                        : commentDiv.classList.contains('error') ? 'error'
-                        : commentDiv.classList.contains('info') ? 'info'
-                        : 'other';
-
-  // Désactiver tous les boutons pendant édition
-  document.querySelectorAll('button').forEach(b => b.disabled = true);
-
-  const textarea = document.createElement('textarea');
-  textarea.value = originalText;
-  textarea.rows = 3;
-  textarea.cols = 40;
-
-  const saveBtn = document.createElement('button');
-  saveBtn.textContent = 'Enregistrer';
-  saveBtn.onclick = function() {
-    const newText = textarea.value.trim();
-    if (!newText) return;
-    // Mettre à jour l'affichage
-    commentDiv.innerHTML = `<strong>[${originalType}]</strong> ${newText} <button onclick="replyTo(this)">Répondre</button> <button onclick="editComment(this)">Modifier</button><div class="replies"></div>`;
-    drawMarkers(); // redraw pastilles si nécessaire
-    document.querySelectorAll('button').forEach(b => b.disabled = false);
-  };
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = 'Annuler';
-  cancelBtn.onclick = function() {
-    // Recharger l'affichage sans changer
-    commentDiv.innerHTML = `<strong>[${originalType}]</strong> ${originalText} <button onclick="replyTo(this)">Répondre</button> <button onclick="editComment(this)">Modifier</button><div class="replies"></div>`;
-    document.querySelectorAll('button').forEach(b => b.disabled = false);
-  };
-
-  commentDiv.innerHTML = '';
-  commentDiv.appendChild(textarea);
-  commentDiv.appendChild(document.createElement('br'));
-  commentDiv.appendChild(saveBtn);
-  commentDiv.appendChild(cancelBtn);
+function resolveComment(page, index) {
+  alert('Fonction Résoudre à venir (peut changer le statut) ! 🚀');
 }
 
-function deleteComment(button) {
-  if (!confirm('Supprimer ce commentaire ?')) return;
-  const commentDiv = button.parentElement;
-  commentDiv.remove();
-
-  // TODO : plus tard quand on aura la sauvegarde JSON, il faudra aussi enlever du tableau `commentsPerPage`
+function deleteComment(page, index) {
+  if (!confirm("Supprimer ce commentaire ?")) return;
+  const block = document.getElementById(`comment-${page}-${index}`);
+  block.classList.add('fade-out');
+  setTimeout(() => {
+    commentsPerPage[page].splice(index, 1);
+    showCommentsForPage(page);
+    drawMarkers();
+  }, 500);
 }
 
-function replyTo(button) {
-  const replyText = prompt("Votre réponse :");
-  if (!replyText) return;
-  const replyDiv = document.createElement('div');
-  replyDiv.className = 'reply';
-  replyDiv.innerText = replyText;
-  button.parentElement.querySelector('.replies').appendChild(replyDiv);
+function getInitials(name) {
+  const parts = name.split(' ');
+  return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
 }
 
 pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
