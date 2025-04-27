@@ -22,6 +22,14 @@
       background: white; border: 2px solid #000; padding: 20px; z-index: 10;
     }
     .modal input, .modal select { margin: 5px 0; }
+    #markersContainer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none; /* important : bloque événements sauf pour pastilles */
+    }    
     .marker {
       position: absolute;
       width: 24px;
@@ -36,7 +44,8 @@
       transform: translate(-50%, -50%);
       z-index: 5;
       font-size: 14px;
-    }
+      pointer-events: auto; /* important : permet de cliquer/hover sur la pastille */
+    }    
   </style>
   <script src="/static/pdfjs/pdf.min.js"></script>
 </head>
