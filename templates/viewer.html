@@ -169,8 +169,11 @@ function handleClick(event) {
 }
 
 function openModal() {
+  document.getElementById('commentText').value = '';  // vide le texte
+  document.getElementById('commentType').selectedIndex = 0; // remet le premier choix
   document.getElementById('commentModal').style.display = 'block';
 }
+
 
 function closeModal() {
   document.getElementById('commentModal').style.display = 'none';
