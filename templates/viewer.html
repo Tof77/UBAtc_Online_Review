@@ -288,32 +288,80 @@ function showCommentsForPage(page) {
   const list = document.getElementById('commentsList');
   list.innerHTML = '';
   const comments = commentsPerPage[page] || [];
+
   comments.forEach((comment, index) => {
     const block = document.createElement('div');
     block.className = 'comment-block';
     block.id = `comment-${page}-${index}`;
-    if (comment.status === 'resolved') {
-      block.classList.add('resolved');
-    }
+
+    // Ajouter bannière Resolved si nécessaire
     if (comment.status === 'resolved') {
       const resolvedBanner = document.createElement('div');
       resolvedBanner.className = 'resolved-banner';
       resolvedBanner.innerText = 'Resolved';
       block.appendChild(resolvedBanner);
     }
-    block.innerHTML = `
-      <div class="author-info">
-        <div class="initials-circle">${comment.initials}</div>
-        <div class="author-name">${comment.author}</div>
-      </div>
-      <div class="comment-actions">
-        <button onclick="editComment(${page}, ${index})">✏️</button>
-        <button onclick="resolveComment(${page}, ${index})">✅</button>
-        <button onclick="deleteComment(${page}, ${index})">🗑️</button>
-      </div>
-      <div class="comment-text">${comment.text}</div>
-      <div class="comment-date">${comment.createdAt}</div>
-    `;
+
+    // Section auteur (Initiales + Nom)
+    const authorInfo = document.createElement('div');
+    authorInfo.className = 'author-info';
+
+    const initialsCircle = document.createElement('div');
+    initialsCircle.className = 'initials-circle';
+    initialsCircle.textContent = comment.initials;
+
+    const authorName = document.createElement('div');
+    authorName.className = 'author-name';
+    authorName.textContent = comment.author;
+
+    authorInfo.appendChild(initialsCircle);
+    authorInfo.appendChild(authorName);
+
+    block.appendChild(authorInfo);
+
+    // Actions (Modifier, Résoudre/Réouvrir, Supprimer)
+    const actions = document.createElement('div');
+    actions.className = 'comment-actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.innerHTML = '✏️';
+    editBtn.onclick = () => editComment(page, index);
+    actions.appendChild(editBtn);
+
+    const resolveBtn = document.createElement('button');
+    if (comment.status === 'resolved') {
+      resolveBtn.innerHTML = '↩️'; // Réouvrir
+      resolveBtn.title = "Réouvrir le commentaire";
+      resolveBtn.onclick = () => reopenComment(page, index);
+    } else {
+      resolveBtn.innerHTML = '✅'; // Résoudre
+      resolveBtn.title = "Résoudre le commentaire";
+      resolveBtn.onclick = () => resolveComment(page, index);
+    }
+    actions.appendChild(resolveBtn);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerHTML = '🗑️';
+    deleteBtn.onclick = () => deleteComment(page, index);
+    actions.appendChild(deleteBtn);
+
+    block.appendChild(actions);
+
+    // Texte du commentaire
+    const textDiv = document.createElement('div');
+    textDiv.className = 'comment-text';
+    if (comment.status === 'resolved') {
+      textDiv.classList.add('resolved-text');
+    }
+    textDiv.innerText = comment.text;
+    block.appendChild(textDiv);
+
+    // Date
+    const dateDiv = document.createElement('div');
+    dateDiv.className = 'comment-date';
+    dateDiv.textContent = comment.createdAt;
+    block.appendChild(dateDiv);
+
     list.appendChild(block);
   });
 }
@@ -407,11 +455,23 @@ function resolveComment(page, index) {
   showCommentsForPage(page);
   drawMarkers();
 
-  // Scroll + flash doux
   const resolvedBlock = document.getElementById(`comment-${page}-${index}`);
   resolvedBlock.scrollIntoView({ behavior: "smooth", block: "center" });
   resolvedBlock.classList.add('highlight');
   setTimeout(() => resolvedBlock.classList.remove('highlight'), 1500);
+}
+
+function reopenComment(page, index) {
+  const comment = commentsPerPage[page][index];
+  comment.status = 'open';
+
+  showCommentsForPage(page);
+  drawMarkers();
+
+  const reopenedBlock = document.getElementById(`comment-${page}-${index}`);
+  reopenedBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+  reopenedBlock.classList.add('highlight');
+  setTimeout(() => reopenedBlock.classList.remove('highlight'), 1500);
 }
 
 function deleteComment(page, index) {
