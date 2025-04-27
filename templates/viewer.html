@@ -128,7 +128,7 @@ function showCommentsForPage(page) {
     const commentDiv = document.createElement('div');
     commentDiv.id = `comment-${page}-${index}`;
     commentDiv.className = 'comment ' + comment.type;
-    commentDiv.innerHTML = `<strong>[${comment.type}]</strong> ${comment.text} <button onclick="replyTo(this)">Répondre</button><button onclick="editComment(this)">Modifier</button><div class="replies"></div>`;
+    commentDiv.innerHTML = `<strong>[${comment.type}]</strong> ${comment.text} <button onclick="editComment(this)">Modifier</button><button onclick="deleteComment(this)">Supprimer</button> ${(comment.author !== 'anonymous') ? '' : '<button onclick="replyTo(this)">Répondre</button>'} <div class="replies"></div>`;
     comment.replies.forEach(reply => {
       const replyDiv = document.createElement('div');
       replyDiv.className = 'reply';
@@ -253,6 +253,14 @@ function editComment(button) {
   commentDiv.appendChild(document.createElement('br'));
   commentDiv.appendChild(saveBtn);
   commentDiv.appendChild(cancelBtn);
+}
+
+function deleteComment(button) {
+  if (!confirm('Supprimer ce commentaire ?')) return;
+  const commentDiv = button.parentElement;
+  commentDiv.remove();
+
+  // TODO : plus tard quand on aura la sauvegarde JSON, il faudra aussi enlever du tableau `commentsPerPage`
 }
 
 function replyTo(button) {
