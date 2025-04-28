@@ -315,7 +315,79 @@ function applyFilter(type) {
 }
 
 // (ajouter ensuite toutes les fonctions handleClick, editComment, resolveComment, etc.)
+function handleClick(event) {
+  const rect = canvas.getBoundingClientRect();
+  clickX = (event.clientX - rect.left) / rect.width;
+  clickY = (event.clientY - rect.top) / rect.height;
+  showMiniPopup(event.clientX - rect.left, event.clientY - rect.top);
+}
 
+function showMiniPopup(x, y) {
+  let existing = document.getElementById('miniPopup');
+  if (existing) {
+    existing.remove();
+  }
+
+  const popup = document.createElement('div');
+  popup.id = 'miniPopup';
+  popup.style.position = 'absolute';
+  popup.style.top = `${y}px`;
+  popup.style.left = `${x}px`;
+  popup.style.background = '#fff';
+  popup.style.border = '1px solid #ccc';
+  popup.style.padding = '8px';
+  popup.style.zIndex = '1000';
+  popup.style.boxShadow = '2px 2px 8px rgba(0,0,0,0.2)';
+
+  const textarea = document.createElement('textarea');
+  textarea.rows = 3;
+  textarea.cols = 30;
+  textarea.placeholder = "Votre commentaire...";
+
+  const saveButton = document.createElement('button');
+  saveButton.textContent = 'Ajouter';
+  saveButton.onclick = () => {
+    if (!textarea.value.trim()) {
+      alert("Le commentaire est vide !");
+      return;
+    }
+    addComment(pageNum, clickX, clickY, textarea.value.trim());
+    popup.remove();
+  };
+
+  const cancelButton = document.createElement('button');
+  cancelButton.textContent = 'Annuler';
+  cancelButton.onclick = () => popup.remove();
+
+  popup.appendChild(textarea);
+  popup.appendChild(document.createElement('br'));
+  popup.appendChild(saveButton);
+  popup.appendChild(cancelButton);
+
+  document.getElementById('viewerContainer').appendChild(popup);
+}
+
+function addComment(page, x, y, text) {
+  if (!commentsPerPage[page]) {
+    commentsPerPage[page] = [];
+  }
+  const now = new Date();
+  const dateStr = now.toLocaleString('fr-FR');
+  commentsPerPage[page].push({
+    text: text,
+    x: x,
+    y: y,
+    author: "Anonymous", // à remplacer plus tard si login
+    initials: "AA",       // à calculer plus tard
+    status: "open",
+    createdAt: dateStr,
+    replies: []
+  });
+  showCommentsForPage(page);
+  drawMarkers();
+  // TODO : Ajouter appel API save_comment si tu veux sauvegarder côté serveur
+}
+  
 pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
   pdfDoc = pdfDoc_;
   pageCount = pdfDoc.numPages;
