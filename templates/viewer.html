@@ -1,23 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <title>Relecture PDF - MS Word Style</title>
+  <meta charset="UTF-8">
+  <title>Relecture PDF - Version Pro</title>
+
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
     body { display: flex; margin: 0; height: 100vh; font-family: Arial, sans-serif; }
     #viewerContainer { flex: 3; overflow: auto; position: relative; background: #f0f0f0; }
     #commentsPanel { flex: 1; border-left: 2px solid #ccc; padding: 10px; overflow-y: auto; background: #fafafa; }
+
     .controls { text-align: center; margin: 10px; }
     canvas { border: 1px solid #ccc; margin-bottom: 10px; }
 
-    /* Comment block */
+    #commentsHeader {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    #filterButton {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 18px;
+      color: #333;
+    }
+    #filterButton.active {
+      color: #4285f4;
+    }
+    #filterMenu {
+      display: none;
+      position: absolute;
+      background: white;
+      border: 1px solid #ccc;
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.2);
+      padding: 8px;
+      z-index: 10;
+      margin-top: 5px;
+      right: 20px;
+    }
+    #filterMenu button {
+      display: block;
+      background: none;
+      border: none;
+      width: 100%;
+      text-align: left;
+      padding: 5px;
+      cursor: pointer;
+    }
+    #filterMenu button:hover {
+      background: #eee;
+    }
     .comment-block {
-      border: 2px solid purple;
+      border: 1px solid black;
       border-radius: 8px;
       padding: 10px;
       margin-bottom: 15px;
       background: white;
       position: relative;
-      transition: background-color 0.5s;
+      transition: background-color 0.5s, border 0.3s;
+    }
+    .comment-block.active {
+      border: 2px solid purple;
+    }
+    .resolved {
+      background-color: #e0e0e0;
+      color: #777;
+    }
+    .resolved-banner {
+      background-color: #d1d1d1;
+      font-weight: bold;
+      padding: 4px 8px;
+      font-size: 13px;
+      margin-bottom: 5px;
     }
     .author-info {
       display: flex;
@@ -48,7 +106,6 @@
     .comment-date {
       font-size: 12px;
       color: gray;
-      margin-bottom: 5px;
     }
     .comment-actions {
       position: absolute;
@@ -61,26 +118,6 @@
       cursor: pointer;
       font-size: 16px;
       margin-left: 5px;
-    }
-    .reply-input {
-      margin-top: 10px;
-    }
-    .reply-input input {
-      width: 90%;
-      padding: 5px;
-      margin-top: 5px;
-    }
-    .highlight {
-      animation: flash 1s ease-in-out;
-      background-color: yellow;
-    }
-    @keyframes flash {
-      0% { background-color: yellow; }
-      100% { background-color: transparent; }
-    }
-    .fade-out {
-      opacity: 0;
-      transition: opacity 0.5s;
     }
     .marker {
       position: absolute;
@@ -96,7 +133,6 @@
       transform: translate(-50%, -50%);
       z-index: 5;
       font-size: 14px;
-      pointer-events: auto;
     }
     #markersContainer {
       position: absolute;
@@ -106,39 +142,11 @@
       height: 100%;
       pointer-events: none;
     }
-    .resolved {
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 15px;
-      background-color: #e0e0e0;
-      color: #777;
-      position: relative;
-      transition: background-color 0.5s;
-    }
-    .comment-text.resolved-text {
-      text-decoration: line-through;
-    }
-    .resolved-banner {
-/*       background-color: #e0e0e0; */
-      color: #777;
-      font-weight: 600;
-      padding: 4px 8px;
-      border-bottom: 1px solid #ccc;
-      display: flex;
-      align-items: center;
-      font-size: 14px;
-    }
-    .resolved-banner::before {
-      content: "✅";
-      margin-right: 6px;
-    }
-/*     .resolved-comment {
-      background-color: #e0e0e0;
-    } */
   </style>
+
   <script src="/static/pdfjs/pdf.min.js"></script>
 </head>
+
 <body>
 
 <div id="viewerContainer">
@@ -154,25 +162,22 @@
 </div>
 
 <div id="commentsPanel">
-  <h2>Commentaires</h2>
+  <div id="commentsHeader">
+    <span id="itemsCount">0 items</span>
+    <div style="position: relative;">
+      <button id="filterButton" onclick="toggleFilterMenu()">
+        <i class="fas fa-filter"></i>
+      </button>
+      <div id="filterMenu">
+        <button onclick="applyFilter('all')">Afficher tous</button>
+        <button onclick="applyFilter('open')">Actifs seulement</button>
+        <button onclick="applyFilter('resolved')">Résolus seulement</button>
+      </div>
+    </div>
+  </div>
+
   <div id="commentsList"></div>
 </div>
-
-<!-- Modale pour ajouter un commentaire -->
-<!-- <div id="commentModal" class="modal">
-  <h3>Ajouter un commentaire</h3>
-  <textarea id="commentText" placeholder="Votre commentaire" rows="4" cols="40"></textarea><br>
-  <select id="commentType">
-    <option value="suggestion">Suggestion</option>
-    <option value="question">Question</option>
-    <option value="error">Erreur</option>
-    <option value="info">Info</option>
-    <option value="other">Autre</option>
-  </select><br>
-  <button onclick="submitComment()">Envoyer</button>
-  <button onclick="closeModal()">Annuler</button>
-</div> -->
-
 <script>
 const url = "/uploads/{{ filename }}";
 const pdfjsLib = window['pdfjs-dist/build/pdf'];
@@ -181,7 +186,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '/static/pdfjs/pdf.worker.min.js';
 let pdfDoc = null, pageNum = 1, pageCount = 0, scale = 1.5;
 let canvas = document.getElementById('pdf-canvas'), ctx = canvas.getContext('2d');
 let clickX = 0, clickY = 0;
-let commentsPerPage = {};  // {pageNum: [{author, text, type, x, y, replies:[], createdAt, status}]}
+let commentsPerPage = {};  // {pageNum: [{...}]}
+let activeCommentId = null;
+let currentFilter = 'all';
 
 function renderPage(num) {
   pdfDoc.getPage(num).then(function(page) {
@@ -194,316 +201,120 @@ function renderPage(num) {
     };
     page.render(renderContext);
     document.getElementById('page_num').textContent = pageNum;
-    showCommentsForPage(num);
-    drawMarkers();
-  });
-}
-
-function nextPage() { if (pageNum < pageCount) { pageNum++; renderPage(pageNum); } }
-function prevPage() { if (pageNum > 1) { pageNum--; renderPage(pageNum); } }
-
-function handleClick(event) {
-  const rect = canvas.getBoundingClientRect();
-  clickX = (event.clientX - rect.left) / rect.width;
-  clickY = (event.clientY - rect.top) / rect.height;
-
-  showMiniPopup(event.clientX - rect.left, event.clientY - rect.top);
-}
-
-function openModal() {
-  document.getElementById('commentText').value = '';
-  document.getElementById('commentType').selectedIndex = 0;
-  document.getElementById('commentModal').style.display = 'block';
-}
-
-function closeModal() {
-  document.getElementById('commentModal').style.display = 'none';
-}
-
-function showMiniPopup(posX, posY) {
-  // Supprimer un popup existant s'il y en a un
-  const oldPopup = document.getElementById('miniPopup');
-  if (oldPopup) oldPopup.remove();
-
-  const popup = document.createElement('div');
-  popup.id = 'miniPopup';
-  popup.style.position = 'absolute';
-  popup.style.top = `${posY}px`;
-  popup.style.left = `${posX}px`;
-  popup.style.background = 'white';
-  popup.style.border = '2px solid purple';
-  popup.style.borderRadius = '8px';
-  popup.style.padding = '10px';
-  popup.style.zIndex = 10;
-  popup.style.boxShadow = '2px 2px 6px rgba(0,0,0,0.3)';
-  popup.innerHTML = `
-    <textarea id="popupComment" rows="3" cols="30" placeholder="Votre commentaire"></textarea><br>
-    <button onclick="submitMiniPopup()">Envoyer</button>
-    <button onclick="cancelMiniPopup()">Annuler</button>
-  `;
-  
-  document.getElementById('viewerContainer').appendChild(popup);
-}
-
-function cancelMiniPopup() {
-  const popup = document.getElementById('miniPopup');
-  if (popup) popup.remove();
-}
-
-function submitMiniPopup() {
-  const text = document.getElementById('popupComment').value.trim();
-  if (!text) {
-    alert("Veuillez écrire un commentaire.");
-    return;
-  }
-  const author = 'Christophe China'; // à dynamiser plus tard
-  const initials = getInitials(author);
-  const now = new Date().toLocaleString();
-
-  fetch("/add_comment", {
-    method: "POST",
-    headers: {"Content-Type": "application/x-www-form-urlencoded"},
-    body: `page=${pageNum}&x=${clickX}&y=${clickY}&text=${encodeURIComponent(text)}&type=suggestion`
-  }).then(() => {
-    if (!commentsPerPage[pageNum]) commentsPerPage[pageNum] = [];
-    commentsPerPage[pageNum].push({ text: text, type: 'suggestion', x: clickX, y: clickY, author: author, initials: initials, createdAt: now, replies: [], status: 'open' });
     showCommentsForPage(pageNum);
     drawMarkers();
-    cancelMiniPopup();
   });
 }
-  
-function submitComment() {
-  const text = document.getElementById('commentText').value;
-  const type = document.getElementById('commentType').value;
-  const author = 'Christophe China'; // à remplacer plus tard par l'identité utilisateur
-  const initials = getInitials(author);
-  const now = new Date().toLocaleString();
 
-  fetch("/add_comment", {
-    method: "POST",
-    headers: {"Content-Type": "application/x-www-form-urlencoded"},
-    body: `page=${pageNum}&x=${clickX}&y=${clickY}&text=${encodeURIComponent(text)}&type=${type}`
-  }).then(() => {
-    if (!commentsPerPage[pageNum]) commentsPerPage[pageNum] = [];
-    commentsPerPage[pageNum].push({ text: text, type: type, x: clickX, y: clickY, author: author, initials: initials, createdAt: now, replies: [], status: 'open' });
-    showCommentsForPage(pageNum);
-    drawMarkers();
-    closeModal();
-  });
+function prevPage() {
+  if (pageNum > 1) { pageNum--; renderPage(pageNum); }
+}
+
+function nextPage() {
+  if (pageNum < pageCount) { pageNum++; renderPage(pageNum); }
 }
 
 function showCommentsForPage(page) {
   const list = document.getElementById('commentsList');
   list.innerHTML = '';
   const comments = commentsPerPage[page] || [];
+  let visibleCount = 0;
 
   comments.forEach((comment, index) => {
+    if (currentFilter === 'open' && comment.status === 'resolved') return;
+    if (currentFilter === 'resolved' && comment.status !== 'resolved') return;
+
     const block = document.createElement('div');
     block.className = 'comment-block';
     block.id = `comment-${page}-${index}`;
 
-    // Ajouter bannière Resolved si nécessaire
     if (comment.status === 'resolved') {
-      const resolvedBanner = document.createElement('div');
-      resolvedBanner.className = 'resolved-banner';
-      resolvedBanner.innerText = 'Resolved';
-      block.appendChild(resolvedBanner);
-      block.className = 'resolved';
+      block.classList.add('resolved');
+      const banner = document.createElement('div');
+      banner.className = 'resolved-banner';
+      banner.textContent = '✅ Resolved';
+      block.appendChild(banner);
     }
 
-    // Section auteur (Initiales + Nom)
+    if (activeCommentId === `comment-${page}-${index}`) {
+      block.classList.add('active');
+    }
+
     const authorInfo = document.createElement('div');
     authorInfo.className = 'author-info';
-
     const initialsCircle = document.createElement('div');
     initialsCircle.className = 'initials-circle';
     initialsCircle.textContent = comment.initials;
-
     const authorName = document.createElement('div');
     authorName.className = 'author-name';
     authorName.textContent = comment.author;
-
     authorInfo.appendChild(initialsCircle);
     authorInfo.appendChild(authorName);
 
-    block.appendChild(authorInfo);
-
-    // Actions (Modifier, Résoudre/Réouvrir, Supprimer)
     const actions = document.createElement('div');
     actions.className = 'comment-actions';
 
     const editBtn = document.createElement('button');
+    editBtn.innerHTML = '<i class="fas fa-pen"></i>';
+    editBtn.onclick = () => editComment(page, index);
+
     const resolveBtn = document.createElement('button');
     if (comment.status === 'resolved') {
-      resolveBtn.innerHTML = '↩️'; // Réouvrir
-      resolveBtn.title = "Réouvrir le commentaire";
+      resolveBtn.innerHTML = '<i class="fas fa-undo"></i>';
+      resolveBtn.title = "Réouvrir";
       resolveBtn.onclick = () => reopenComment(page, index);
     } else {
-      editBtn.innerHTML = '✏️';
-      editBtn.onclick = () => editComment(page, index);
-      actions.appendChild(editBtn);
-      resolveBtn.innerHTML = '✅'; // Résoudre
-      resolveBtn.title = "Résoudre le commentaire";
+      resolveBtn.innerHTML = '<i class="fas fa-check"></i>';
+      resolveBtn.title = "Résoudre";
       resolveBtn.onclick = () => resolveComment(page, index);
     }
-    actions.appendChild(resolveBtn);
 
     const deleteBtn = document.createElement('button');
-    deleteBtn.innerHTML = '🗑️';
+    deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
     deleteBtn.onclick = () => deleteComment(page, index);
+
+    if (comment.status !== 'resolved') actions.appendChild(editBtn);
+    actions.appendChild(resolveBtn);
     actions.appendChild(deleteBtn);
 
-    block.appendChild(actions);
-
-    // Texte du commentaire
     const textDiv = document.createElement('div');
     textDiv.className = 'comment-text';
-    // if (comment.status === 'resolved') {
-    //   textDiv.classList.add('resolved-text');
-    // }
     textDiv.innerText = comment.text;
-    block.appendChild(textDiv);
 
-    // Date
     const dateDiv = document.createElement('div');
-    if (comment.status === 'resolved') {      
-      dateDiv.className = 'comment-date';
-      block.appendChild(dateDiv);
-    }
-    else {
-      dateDiv.className = 'comment-date';
-      dateDiv.textContent = comment.createdAt;
-      block.appendChild(dateDiv);
-    }      
+    dateDiv.className = 'comment-date';
+    dateDiv.textContent = comment.createdAt;
+
+    block.appendChild(authorInfo);
+    block.appendChild(actions);
+    block.appendChild(textDiv);
+    block.appendChild(dateDiv);
 
     list.appendChild(block);
+    visibleCount++;
   });
+
+  document.getElementById('itemsCount').textContent = `${visibleCount} item${visibleCount > 1 ? 's' : ''}`;
 }
 
-function drawMarkers() {
-  const container = document.getElementById('markersContainer');
-  container.innerHTML = '';
-  const comments = commentsPerPage[pageNum] || [];
-  comments.forEach((comment, index) => {
-    const marker = document.createElement('div');
-    marker.className = 'marker';
-    marker.textContent = index + 1;
-    marker.title = comment.text.substring(0, 30) + '...';
-    marker.style.left = (comment.x * canvas.width) + 'px';
-    marker.style.top = (comment.y * canvas.height) + 'px';
-    marker.onclick = function(event) {
-      event.stopPropagation();
-      const commentElement = document.getElementById(`comment-${pageNum}-${index}`);
-      commentElement.scrollIntoView({ behavior: "smooth", block: "center" });
-      commentElement.classList.add('highlight');
-      setTimeout(() => {
-        commentElement.classList.remove('highlight');
-      }, 1500);
-    };
-    container.appendChild(marker);
-  });
+function toggleFilterMenu() {
+  const menu = document.getElementById('filterMenu');
+  menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
 }
 
-function editComment(page, index) {
-  const block = document.getElementById(`comment-${page}-${index}`);
-  const comment = commentsPerPage[page][index];
-
-  if (block.querySelector('textarea')) {
-    // Déjà en édition => ne rien faire
-    return;
+function applyFilter(type) {
+  currentFilter = type;
+  showCommentsForPage(pageNum);
+  const filterButton = document.getElementById('filterButton');
+  if (type === 'all') {
+    filterButton.classList.remove('active');
+  } else {
+    filterButton.classList.add('active');
   }
-
-  // Désactiver tous les autres boutons pendant édition
-  document.querySelectorAll('.comment-actions button').forEach(b => b.disabled = true);
-
-  const originalText = comment.text;
-
-  // Remplacer le texte par un textarea
-  const textDiv = block.querySelector('.comment-text');
-  const textarea = document.createElement('textarea');
-  textarea.value = originalText;
-  textarea.rows = 3;
-  textarea.cols = 40;
-
-  // Créer boutons Sauver et Annuler
-  const saveBtn = document.createElement('button');
-  saveBtn.textContent = '✅';
-  saveBtn.onclick = function() {
-    const newText = textarea.value.trim();
-    if (!newText) {
-      alert("Le commentaire ne peut pas être vide.");
-      return;
-    }
-    // Mise à jour du texte dans le tableau
-    commentsPerPage[page][index].text = newText;
-
-    // Rafraîchir affichage + garder position
-    showCommentsForPage(page);
-    drawMarkers();
-
-    // Scroll + flash sur le commentaire édité
-    const updatedBlock = document.getElementById(`comment-${page}-${index}`);
-    updatedBlock.scrollIntoView({ behavior: "smooth", block: "center" });
-    updatedBlock.classList.add('highlight');
-    setTimeout(() => updatedBlock.classList.remove('highlight'), 1500);
-  };
-
-  const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = '❌';
-  cancelBtn.onclick = function() {
-    showCommentsForPage(page);
-    drawMarkers();
-  };
-
-  textDiv.innerHTML = ''; // Vide l'ancien texte
-  textDiv.appendChild(textarea);
-  textDiv.appendChild(document.createElement('br'));
-  textDiv.appendChild(saveBtn);
-  textDiv.appendChild(cancelBtn);
+  toggleFilterMenu();
 }
 
-function resolveComment(page, index) {
-  const comment = commentsPerPage[page][index];
-  comment.status = 'resolved';
-
-  showCommentsForPage(page);
-  drawMarkers();
-
-  const resolvedBlock = document.getElementById(`comment-${page}-${index}`);
-  resolvedBlock.scrollIntoView({ behavior: "smooth", block: "center" });
-  resolvedBlock.classList.add('highlight');
-  setTimeout(() => resolvedBlock.classList.remove('highlight'), 1500);
-}
-
-function reopenComment(page, index) {
-  const comment = commentsPerPage[page][index];
-  comment.status = 'open';
-
-  showCommentsForPage(page);
-  drawMarkers();
-
-  const reopenedBlock = document.getElementById(`comment-${page}-${index}`);
-  reopenedBlock.scrollIntoView({ behavior: "smooth", block: "center" });
-  reopenedBlock.classList.add('highlight');
-  setTimeout(() => reopenedBlock.classList.remove('highlight'), 1500);
-}
-
-function deleteComment(page, index) {
-  if (!confirm("Supprimer ce commentaire ?")) return;
-  const block = document.getElementById(`comment-${page}-${index}`);
-  block.classList.add('fade-out');
-  setTimeout(() => {
-    commentsPerPage[page].splice(index, 1);
-    showCommentsForPage(page);
-    drawMarkers();
-  }, 500);
-}
-
-function getInitials(name) {
-  const parts = name.split(' ');
-  return (parts[0][0] + (parts[1]?.[0] || '')).toUpperCase();
-}
+// (ajouter ensuite toutes les fonctions handleClick, editComment, resolveComment, etc.)
 
 pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
   pdfDoc = pdfDoc_;
