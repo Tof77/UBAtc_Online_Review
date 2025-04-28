@@ -377,16 +377,93 @@ function addComment(page, x, y, text) {
     text: text,
     x: x,
     y: y,
-    author: "Anonymous", // à remplacer plus tard si login
-    initials: "AA",       // à calculer plus tard
+    author: "Anonymous", // à personnaliser plus tard
+    initials: "AA",
     status: "open",
     createdAt: dateStr,
     replies: []
   });
+
   showCommentsForPage(page);
   drawMarkers();
-  // TODO : Ajouter appel API save_comment si tu veux sauvegarder côté serveur
+
+  const popup = document.getElementById('miniPopup');
+  if (popup) {
+    popup.remove(); // ❗ ferme le popup après ajout
+  }
 }
+  
+function editComment(page, index) {
+  const block = document.getElementById(`comment-${page}-${index}`);
+  const comment = commentsPerPage[page][index];
+
+  const textarea = document.createElement('textarea');
+  textarea.value = comment.text;
+  textarea.rows = 3;
+  textarea.cols = 30;
+
+  const saveButton = document.createElement('button');
+  saveButton.textContent = "Valider";
+  saveButton.onclick = () => {
+    comment.text = textarea.value;
+    showCommentsForPage(page);
+    drawMarkers();
+  };
+
+  const cancelButton = document.createElement('button');
+  cancelButton.textContent = "Annuler";
+  cancelButton.onclick = () => showCommentsForPage(page);
+
+  block.innerHTML = '';
+  block.appendChild(textarea);
+  block.appendChild(document.createElement('br'));
+  block.appendChild(saveButton);
+  block.appendChild(cancelButton);
+}
+
+function resolveComment(page, index) {
+  const comment = commentsPerPage[page][index];
+  comment.status = 'resolved';
+
+  showCommentsForPage(page);
+  drawMarkers();
+}
+
+function reopenComment(page, index) {
+  const comment = commentsPerPage[page][index];
+  comment.status = 'open';
+
+  showCommentsForPage(page);
+  drawMarkers();
+}
+
+function deleteComment(page, index) {
+  if (confirm("Supprimer ce commentaire ?")) {
+    commentsPerPage[page].splice(index, 1);
+
+    showCommentsForPage(page);
+    drawMarkers();
+  }
+}
+
+function drawMarkers() {
+  const container = document.getElementById('markersContainer');
+  container.innerHTML = '';
+
+  const comments = commentsPerPage[pageNum] || [];
+
+  comments.forEach((comment, index) => {
+    const marker = document.createElement('div');
+    marker.className = 'marker';
+    marker.textContent = index + 1;
+    marker.style.left = `${comment.x * canvas.width}px`;
+    marker.style.top = `${comment.y * canvas.height}px`;
+    marker.title = comment.text;
+
+    container.appendChild(marker);
+  });
+}
+
   
 pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
   pdfDoc = pdfDoc_;
