@@ -328,16 +328,15 @@ function showCommentsForPage(page) {
     actions.className = 'comment-actions';
 
     const editBtn = document.createElement('button');
-    editBtn.innerHTML = '✏️';
-    editBtn.onclick = () => editComment(page, index);
-    actions.appendChild(editBtn);
-
     const resolveBtn = document.createElement('button');
     if (comment.status === 'resolved') {
       resolveBtn.innerHTML = '↩️'; // Réouvrir
       resolveBtn.title = "Réouvrir le commentaire";
       resolveBtn.onclick = () => reopenComment(page, index);
     } else {
+      editBtn.innerHTML = '✏️';
+      editBtn.onclick = () => editComment(page, index);
+      actions.appendChild(editBtn);
       resolveBtn.innerHTML = '✅'; // Résoudre
       resolveBtn.title = "Résoudre le commentaire";
       resolveBtn.onclick = () => resolveComment(page, index);
@@ -361,12 +360,16 @@ function showCommentsForPage(page) {
     block.appendChild(textDiv);
 
     // Date
-    if (comment.status !== 'resolved') {
-      const dateDiv = document.createElement('div');
+    const dateDiv = document.createElement('div');
+    if (comment.status === 'resolved') {      
+      dateDiv.className = 'comment-date';
+      block.appendChild(dateDiv);
+    }
+    else {
       dateDiv.className = 'comment-date';
       dateDiv.textContent = comment.createdAt;
       block.appendChild(dateDiv);
-    }
+    }      
 
     list.appendChild(block);
   });
