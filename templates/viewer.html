@@ -455,13 +455,29 @@ function drawMarkers() {
     const marker = document.createElement('div');
     marker.className = 'marker';
     marker.textContent = index + 1;
+
     marker.style.left = `${comment.x * canvas.width}px`;
     marker.style.top = `${comment.y * canvas.height}px`;
-    marker.title = comment.text;
+
+    marker.title = comment.text;  // ➔ Tooltip au survol
+
+    marker.onclick = () => {
+      activeCommentId = `comment-${pageNum}-${index}`;
+      showCommentsForPage(pageNum);
+
+      // Scroll automatique vers le commentaire sélectionné
+      const commentBlock = document.getElementById(activeCommentId);
+      if (commentBlock) {
+        commentBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+        commentBlock.classList.add('highlight');
+        setTimeout(() => commentBlock.classList.remove('highlight'), 1500);
+      }
+    };
 
     container.appendChild(marker);
   });
 }
+
 
   
 pdfjsLib.getDocument(url).promise.then(function(pdfDoc_) {
