@@ -127,6 +127,9 @@
       content: "✅";
       margin-right: 6px;
     }
+/*     .resolved-comment {
+      background-color: #e0e0e0;
+    } */
   </style>
   <script src="/static/pdfjs/pdf.min.js"></script>
 </head>
@@ -300,6 +303,7 @@ function showCommentsForPage(page) {
       resolvedBanner.className = 'resolved-banner';
       resolvedBanner.innerText = 'Resolved';
       block.appendChild(resolvedBanner);
+      block.className = 'resolved';
     }
 
     // Section auteur (Initiales + Nom)
@@ -350,17 +354,19 @@ function showCommentsForPage(page) {
     // Texte du commentaire
     const textDiv = document.createElement('div');
     textDiv.className = 'comment-text';
-    if (comment.status === 'resolved') {
-      textDiv.classList.add('resolved-text');
-    }
+    // if (comment.status === 'resolved') {
+    //   textDiv.classList.add('resolved-text');
+    // }
     textDiv.innerText = comment.text;
     block.appendChild(textDiv);
 
     // Date
-    const dateDiv = document.createElement('div');
-    dateDiv.className = 'comment-date';
-    dateDiv.textContent = comment.createdAt;
-    block.appendChild(dateDiv);
+    if (comment.status !== 'resolved') {
+      const dateDiv = document.createElement('div');
+      dateDiv.className = 'comment-date';
+      dateDiv.textContent = comment.createdAt;
+      block.appendChild(dateDiv);
+    }
 
     list.appendChild(block);
   });
